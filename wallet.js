@@ -1,7 +1,8 @@
 const { ethers } = require('ethers');
 const config = require('./config');
 
-const provider = new ethers.providers.JsonRpcProvider(config.eth.rpcUrl);
+// JAVÍTVA: config.eth helyett config.network, és az új ethers v6 szintaxis
+const provider = new ethers.JsonRpcProvider(config.network.rpcUrl);
 
 class WalletManager {
   createWallet() {
@@ -18,7 +19,7 @@ class WalletManager {
 
   async getBalance(address) {
     const balance = await provider.getBalance(address);
-    return ethers.utils.formatEther(balance);
+    return ethers.formatEther(balance); // JAVÍTVA: utils nélkül (v6)
   }
 
   async getTokenBalance(walletAddress, tokenAddress) {
@@ -34,7 +35,7 @@ class WalletManager {
     const symbol = await contract.symbol();
     
     return {
-      balance: ethers.utils.formatUnits(balance, decimals),
+      balance: ethers.formatUnits(balance, decimals), // JAVÍTVA: utils nélkül (v6)
       symbol,
       decimals
     };
