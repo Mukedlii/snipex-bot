@@ -1,8 +1,9 @@
 const { ethers } = require('ethers');
 const config = require('./config');
 
-// JAVÍTVA: config.eth helyett config.network, és az új ethers v6 szintaxis
-const provider = new ethers.JsonRpcProvider(config.network.rpcUrl);
+// JAVÍTVA: Visszatértünk a v5 stílushoz (ethers.providers...)
+// és a config hivatkozás is jó (config.network...)
+const provider = new ethers.providers.JsonRpcProvider(config.network.rpcUrl);
 
 class WalletManager {
   createWallet() {
@@ -19,7 +20,7 @@ class WalletManager {
 
   async getBalance(address) {
     const balance = await provider.getBalance(address);
-    return ethers.formatEther(balance); // JAVÍTVA: utils nélkül (v6)
+    return ethers.utils.formatEther(balance); // v5: kell a .utils
   }
 
   async getTokenBalance(walletAddress, tokenAddress) {
@@ -35,7 +36,7 @@ class WalletManager {
     const symbol = await contract.symbol();
     
     return {
-      balance: ethers.formatUnits(balance, decimals), // JAVÍTVA: utils nélkül (v6)
+      balance: ethers.utils.formatUnits(balance, decimals), // v5: kell a .utils
       symbol,
       decimals
     };
