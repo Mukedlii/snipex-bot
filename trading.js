@@ -2,6 +2,9 @@ const { ethers } = require('ethers');
 const config = require('./config');
 const walletManager = require('./wallet');
 
+// Base WETH cím (ez hiányzott)
+const WETH_ADDRESS = '0x4200000000000000000000000000000000000006';
+
 const ROUTER_ABI = [
   'function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) external payable returns (uint[] memory amounts)',
   'function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts)',
@@ -15,10 +18,13 @@ const ERC20_ABI = [
 
 class TradingEngine {
   constructor() {
+    // JAVÍTVA: config.eth helyett config.network
+    const provider = new ethers.providers.JsonRpcProvider(config.network.rpcUrl);
+    
     this.router = new ethers.Contract(
-      config.uniswap.routerV2,
+      config.routerAddress, // JAVÍTVA: routerV2 helyett routerAddress
       ROUTER_ABI,
-      new ethers.providers.JsonRpcProvider(config.eth.rpcUrl)
+      provider
     );
   }
 
@@ -28,7 +34,10 @@ class TradingEngine {
 
     // Calculate fee
     const ethAmountBN = ethers.utils.parseEther(ethAmount);
-    const feeAmount = ethAmountBN.mul(config.fees.tradingFeePercent).div(100);
+    
+    // JAVÍTVA: Fix 1% díj számítása (BigNumberrel nem lehet tizedest szorozni)
+    const feeAmount = ethAmountBN.div(100); 
+    
     const tradeAmount = ethAmountBN.sub(feeAmount);
 
     // Send fee to fee wallet
@@ -41,7 +50,7 @@ class TradingEngine {
     }
 
     // Execute swap
-    const path = [config.uniswap.weth, tokenAddress];
+    const path = [WETH_ADDRESS, tokenAddress]; // JAVÍTVA: WETH használata
     const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 min
 
     const amounts = await this.router.getAmountsOut(tradeAmount, path);
@@ -76,17 +85,18 @@ class TradingEngine {
       .div(100);
 
     // Check and approve if needed
-    const allowance = await tokenContract.allowance(wallet.address, config.uniswap.routerV2);
+    // JAVÍTVA: routerV2 helyett routerAddress
+    const allowance = await tokenContract.allowance(wallet.address, config.routerAddress);
     if (allowance.lt(sellAmount)) {
       const approveTx = await tokenContract.approve(
-        config.uniswap.routerV2,
+        config.routerAddress, 
         ethers.constants.MaxUint256
       );
       await approveTx.wait();
     }
 
     // Execute swap
-    const path = [tokenAddress, config.uniswap.weth];
+    const path = [tokenAddress, WETH_ADDRESS]; // JAVÍTVA: WETH
     const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
 
     const amounts = await this.router.getAmountsOut(sellAmount, path);
@@ -105,7 +115,7 @@ class TradingEngine {
 
     // Fee is deducted from received ETH
     const receivedETH = amounts[1];
-    const feeAmount = receivedETH.mul(config.fees.tradingFeePercent).div(100);
+    const feeAmount = receivedETH.div(100); // 1% fee
     
     if (feeAmount.gt(0)) {
       const feeTx = await wallet.sendTransaction({
